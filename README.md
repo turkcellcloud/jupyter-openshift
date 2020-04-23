@@ -114,7 +114,7 @@ For authentication purposes, I used Active Directory service and configured offi
  c.LDAPAuthenticator.lookup_dn_search_filter = '({login_attr}={login})'
  c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'CN'
  c.LDAPAuthenticator.lookup_dn_search_user = 'CN=svcpg,OU=Generic Users,DC=orcunuso,DC=io'
- c.LDAPAuthenticator.lookup_dn_search_password = 'password'
+ c.LDAPAuthenticator.lookup_dn_search_password = os.environ[AD_PASSWORD]
  c.LDAPAuthenticator.escape_userdn = False
  c.LDAPAuthenticator.valid_username_regex = r'^[a-z0-9A-Z]*$'upyter
 ```
