@@ -1,8 +1,6 @@
 # Jupyter on OpenShift 3.11
 
-This repository includes software and configurations as a result of my efforts to provide datascientists a highly customizable, powerfull and a secure platform on OpenShift Container Platform 3.11. Before going deeper into it, first things first, I've greatly inspired from two repos maintained by @GrahamDumpleton, [JupyterHub Quickstart](https://github.com/jupyter-on-openshift/jupyterhub-quickstart) and [Jupyter Notebooks](https://github.com/jupyter-on-openshift/jupyter-notebooks), then I created my own images and customizations. I might have moved away from some of the Graham's good-practices in return for meeting other needs of the solution and I'm still working on them.
-
-Secondly, I'm aware of Open Data Hub project but still manually trying to put all the pieces together is a great way to experience and learn more about the components like JupyterHub, JupyterLab, KubeSpawner, etc.
+This repository includes software and configurations as a result of my efforts to provide datascientists a highly customizable, powerful and a secure platform on OpenShift Container Platform 3.11. Before going deeper into it, first things first, I've greatly inspired (and forked eventually) from two repos maintained by @GrahamDumpleton, [JupyterHub Quickstart](https://github.com/jupyter-on-openshift/jupyterhub-quickstart) and [Jupyter Notebooks](https://github.com/jupyter-on-openshift/jupyter-notebooks), then I created my own images and customizations.
 
 ## What is Jupyter Notebook and JupyterHub
 
@@ -15,13 +13,13 @@ The notebook extends the console-based approach to interactive computing in a qu
 
 ## Architecture
 
-The components used in this project other than Kubernetes / OpenShift are JupyterHub v1.1.0, JupyterLab v1.2.7, KubeSpawner and LDAP Authenticator.
+The components used in this project other than Kubernetes / OpenShift are JupyterHub v1.1.0, JupyterLab v1.2.7, Notebook v6.0.3, KubeSpawner and LDAP Authenticator.
 
 ![architecture](https://raw.githubusercontent.com/vOrcunus/jupyter-openshift/master/png/architecture.png)
 
 ## Prepare JupyterHub and Notebook Images
 
-The first step in deploying JupyterHub is to prepare a notebook image and the image for JupyterHub. The contents of the images and Dockerfiles exists in ``images`` folder. What we need to do is to build them and push to a private registry or Docker Hub. These images are CentOS based and usually I prefer to use specific tags so please check for the most recent tags of related base images from [Docker Hub](https://hub.docker.com/).
+The first step in deploying JupyterHub is to prepare a notebook image and the image for JupyterHub. The contents of the images and Dockerfiles exist in ``images`` folder. What we need to do is to build them and push to a private registry or Docker Hub. These images are CentOS based and I prefer to use specific tags so please check for the most recent tags of related base images from [Docker Hub](https://hub.docker.com/).
 
 ```
 cd ./images/jupyterhub
@@ -33,7 +31,7 @@ docker build -t <registry>/<user>/jupyternb:<tag> .
 docker push <registry>/<user>/jupyternb:<tag>
 ```
 
-JupyterHub image is pretty straightforward, these is nothing fancy about it, it will install regular python modules related with JupyterHub. But notebook image is a little bit more customized and complicated, apart from python modules, Oracle client binaries, tensorflow and JupyterLab (with ``git`` extension) installations also take place. As a result of this, we have a pretty big image, so you are warned :)  
+JupyterHub image is pretty straightforward, these is nothing fancy about it, it will install regular python modules related with JupyterHub. But notebook image is a little bit more customized and complicated. Apart from python modules; Oracle client binaries, tensorflow and JupyterLab (with ``git`` extension) are also installed. As a result of this, we have a pretty big image, so you are warned :)  
 
 If you are unsure of how to build these images, feel free to use the ones that exist in the template. 
 
@@ -43,11 +41,11 @@ The pre-requisities of deploying a JupyterHub environment is as follows:
 
 * A functional OpenShift 3.11 environment. If an OpenShift cluster at your disposal does not exist, you can have a look at [Minishift](https://www.okd.io/minishift/).
 * A linux machine to run your ``oc`` commands which can access to your OpenShift cluster.
-* Web server certificates named ``jupyter-ssl.crt`` and ``jupyter-ssl.key``.
+* Web server certificate files named ``jupyter-ssl.crt`` and ``jupyter-ssl.key``.
 * Internet access from your linux machine.
-* A quiet place without any distractions.
+* Last but not least, a quiet place without any distractions.
 
-Start with cloning the repository, creating the namespace, importing the template and creating a new application from the template. There are more parameters in template config, so don't miss to check and adapt according to your environment.
+Start with cloning the repository, creating the namespace, importing the template and creating a new application from the template. There are more parameters in template config, so don't miss to check out and adapt according to your environment.
 
 ```
 git clone https://github.com/vOrcunus/jupyter-openshift.git
@@ -60,7 +58,7 @@ oc status
 A postgresql and a jupyterhub pod should have been created. I've defined the replica count of jupyterhub as zero because we need to do some extra configs in order to prevent it from getting erros. These configurations are;
 
 * Give ``anyuid`` permission to jupyter service account. This is required for running cull-idle service on jupyterhub otherwise it errors out.
-* Create configMap that includes most of our jupyterhub customizations.
+* Create a configMap that includes most of our jupyterhub customizations.
 * Create a secret that keeps the password of the user to query AD.
 * Copy your certificate files, inject them to jupyterhub pod via secrets. 
 
@@ -72,7 +70,7 @@ oc -n datascience create secret tls jupyter-ssl --cert jupyter-ssl.crt --key jup
 oc -n datascience set volume dc/jupyter --add -t secret -m /opt/app-root/share/jupyterhub/ssl --name certs --secret-name jupyter-ssl
 ```
 
-Now we are ready to spin up our jupyterhub pod. We can have the route and access to the UI after the pod starts and passes the readiness probes.
+Now we are ready to spin up our jupyterhub pod. We can have the route and access to the UI after the pod starts and passes the readiness probe.
 
 ```
 oc -n datascience scale dc/jupyter --replicas=1
@@ -89,8 +87,7 @@ To update jupyterhub configuration and restart the pod, run;
 
 ```
 oc -n datascience edit cm/jupyter-cfg
-oc delete pod <jupyterhub_pod>
-# or oc rollout latest dc/jupyter
+oc delete pod -l deploymentconfig=jupyter
 ```
 
 ## More JupyterHub Configurations
@@ -99,7 +96,7 @@ There are more configuration details in the configmap that need to be mentioned.
 
 ### Authentication and Authorization
 
-For authentication purposes, I used Active Directory service and configured official [ldapauthenticator](https://github.com/jupyterhub/ldapauthenticator) according to my environment. This configuration also enables us to authorize users in accordance with their membership information on AD.
+For authentication purposes, I used Active Directory service and configured official [ldapauthenticator](https://github.com/jupyterhub/ldapauthenticator) according to my environment. This configuration also enables us to authorize users in accordance with their membership information in AD.
 
 ```
  c.LDAPAuthenticator_class = 'ldapauthenticator.LDAPAuthenticator'
@@ -114,22 +111,22 @@ For authentication purposes, I used Active Directory service and configured offi
  c.LDAPAuthenticator.lookup_dn_search_filter = '({login_attr}={login})'
  c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'CN'
  c.LDAPAuthenticator.lookup_dn_search_user = 'CN=svcpg,OU=Generic Users,DC=orcunuso,DC=io'
- c.LDAPAuthenticator.lookup_dn_search_password = os.environ[AD_PASSWORD]
+ c.LDAPAuthenticator.lookup_dn_search_password = os.environ['AD_PASSWORD']
  c.LDAPAuthenticator.escape_userdn = False
- c.LDAPAuthenticator.valid_username_regex = r'^[a-z0-9A-Z]*$'upyter
+ c.LDAPAuthenticator.valid_username_regex = r'^[a-z0-9A-Z]*$'
 ```
 
 ### Profile Management
 
-The company might have different user profiles with different cpu and memory resources for their pods. There is a very easy way of fulfilling this necessity, ``KubeSpawner.profile_list``option. But what is missing is that **how can we control which user can request which profile**, so I tried to find a solution by creating a user-profile mapping file where the jupyterhub administrator manually defines the profiles. This is how it works;
+The company might have different user profiles that requires different cpu and memory resources for their pods. There is a very easy way of fulfilling this necessity, ``KubeSpawner.profile_list``option. But what is missing is that **how can we control which user can request which profile**, so I tried to find a solution by creating a user-profile mapping file where the jupyterhub administrator manually defines the profiles. This is how it works;
 
 * A plaintext file is added to the configmap that we already mounted (check configmap for details)
 * A callable is defined in our configuration script
-* That callable is defined as ``KubeSpawner.pre_spawn_hook``
+* That callable is assigned as ``KubeSpawner.pre_spawn_hook``
 
 If the user is not defined in that mapping list, he/she will not be able to run the server and receive an exception on the user interface. This incident will also be logged in the stdout of jupyterhub pod.
 
-Please note that, the options form will override any image defined by the ``NOTEBOOK_IMAGE``template parameter.
+Please note that, the options form will override any image defined by the ``NOTEBOOK_IMAGE`` template parameter.
 
 ### Persistent Storage for Users
 
@@ -150,13 +147,13 @@ Apart from that configuration, you can also alter ``PYTHONPATH`` environment var
 
 ### Culling Idle Servers and Kernels
 
-When a notebook server is created, it will keep running forever and consume valuable resources in your cluster. As the time goes by, more users will probably use this platform and more idle resources will consume memory. This problem is addressed by community and a jupyterhub service can be called periodically to cull idle servers. This service configuration takes place under ``JupyterHub.services``parameter. This will stop notebooks that don't have any activity for 12 hours.
+When a notebook server is created, it will keep running forever and consume valuable resources in your cluster. As the time goes by, more users will probably use this platform and more idle resources will consume memory. This problem is addressed by community and a jupyterhub service can be called periodically to cull idle servers. This service configuration takes place under ``JupyterHub.services`` parameter. This will stop notebooks which don't have any user or kernel activity for 12 hours.
 
 ```
 c.JupyterHub.services = [{'name': 'cull-idle', 'admin': True, 'command': 'python3 /opt/app-root/bin/cull-idle-servers.py --timeout=43200'.split()}]
 ```
 
-In my configuration, I've added profiles for advanced datascientists that allocates great amounts of memory hence I would like to define more restrictive configurations and reclaim those valuable resources sooner than 12 hours. The problem is, jupyterhub service that culls servers will not help because it's a global configuration, it will effect all profiles. The answer is defining kernel shutdown with different timeout configurations within the notebooks.
+In my configuration, I've added profiles for advanced datascientists that allocates great amounts of memory hence I would like to define more restrictive timeouts and reclaim those valuable resources sooner than 12 hours. The problem is, jupyterhub service that culls servers will not help because it's a global configuration, it will effect all profiles. The answer is defining kernel shutdown with different timeout configurations within the notebooks.
 
 ```
 tcKernelTimeout = int(os.environ.get('JUPYTERNB_KERNEL_TIMEOUT', '0'))
