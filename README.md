@@ -162,3 +162,9 @@ c.MappingKernelManager.cull_interval = 301
 ``` 
 
 This configuration takes place in ``jupyter_notebook_config.py``. For more information, refer to the [jupyter notebook](https://jupyter-notebook.readthedocs.io/en/latest/config.html#options) documentation.
+
+## JupyterLab
+
+[JupyterLab](https://jupyterlab.readthedocs.io/en/stable/getting_started/overview.html) is a next-generation web-based user interface for Project Jupyter offering all the familiar building blocks of the classic Jupyter Notebook (notebook, terminal, text editor, file browser, rich outputs, etc.) in a flexible and powerful user interface, and it's already enabled in this project. To improve collaborative work between datascientists, ``git`` extension is installed and enabled with JupyterLab. 
+
+
