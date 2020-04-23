@@ -53,7 +53,7 @@ oc -n datascience new-app --template jupyterhub --param APPLICATION_NAME=jupyter
 oc status
 ```
 
-A postgresql and the jupyterhub pod should have been created. I've defined the replica count of jupyterhub as zero because we need to do some extra configs in order to prevent it from getting erros. These configurations are;
+A postgresql and a jupyterhub pod should have been created. I've defined the replica count of jupyterhub as zero because we need to do some extra configs in order to prevent it from getting erros. These configurations are;
 
 * Give ``anyuid`` permission to jupyter service account. This is required for running cull-idle service on jupyterhub otherwise it errors out.
 * Create configMap that includes most of our jupyterhub customizations.
@@ -66,8 +66,59 @@ oc -n datascience create secret tls jupyter-ssl --cert jupyter-ssl.crt --key jup
 oc -n datascience set volume dc/jupyter --add -t secret -m /opt/app-root/share/jupyterhub/ssl --name certs --secret-name jupyter-ssl
 ```
 
-Now we are ready to spin up our jupyterhub pod.
+Now we are ready to spin up our jupyterhub pod. We can have the route and access to the UI after the pod starts and passes the readiness probes.
 
 ```
 oc -n datascience scale dc/jupyter --replicas=1
-```  
+oc -n datascience get route jupyter -o jsonpath="{.spec.host}"
+``` 
+
+To remove all the resources that has been created so far, run;
+
+```
+oc -n datascience delete all,configmap,pvc,serviceaccount,rolebinding -l app=jupyter
+```
+
+To update jupyterhub configuration and restart the pod, run;
+
+```
+oc -n datascience edit cm/jupyter-cfg
+oc delete pod <jupyterhub_pod>
+# or oc rollout latest dc/jupyter
+```
+
+## More JupyterHub configurations
+
+There are more configuration details in the configmap that need to be mentioned.
+
+### Authentication and Authorization
+
+For authentication purposes, I used Active Directory service and configured official [ldapauthenticator](https://github.com/jupyterhub/ldapauthenticator) according to my environment. This configuration also enables us to authorize users in accordance with their membership information on AD.
+
+```
+ c.LDAPAuthenticator_class = 'ldapauthenticator.LDAPAuthenticator'
+ c.LDAPAuthenticator.server_address = 'dc.orcunus.io'
+ c.LDAPAuthenticator.server_port = 389
+ c.LDAPAuthenticator.use_ssl = False
+ c.LDAPAuthenticator.user_search_base = 'OU=Users,DC=orcunuso,DC=io'
+ c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
+ c.LDAPAuthenticator.use_lookup_dn_username = False
+ c.LDAPAuthenticator.allowed_groups = ['CN=DataScientists,OU=Groups,DC=orcunuso,DC=io']
+ c.LDAPAuthenticator.lookup_dn = True
+ c.LDAPAuthenticator.lookup_dn_search_filter = '({login_attr}={login})'
+ c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'CN'
+ c.LDAPAuthenticator.lookup_dn_search_user = 'CN=svcpg,OU=Generic Users,DC=orcunuso,DC=io'
+ c.LDAPAuthenticator.lookup_dn_search_password = 'password'
+ c.LDAPAuthenticator.escape_userdn = False
+ c.LDAPAuthenticator.valid_username_regex = r'^[a-z0-9A-Z]*$'upyter
+```
+
+### Profile Management
+
+The company might have different user profiles with different cpu and memory resources for their pods. There is a very easy way of fulfilling this necessity, ``KubeSpawner.profile_list``option. But what is missing is that **how can we control which user can request which profile**, so I tried to find a solution by creating a user-profile mapping file where the jupyterhub administrator manually defines the profiles. This is how it works;
+
+* A plaintext file is added to the configmap that we already mounted (check configmap for details)
+* A callable is defined in our configuration script
+* That callable is defined as ``KubeSpawner.pre_spawn_hook``
+
+If the user is not defined in that mapping list, he/she will not be able to run the server and receive an exception on the user interface. This incident will also be logged in the stdout of jupyterhub pod.
