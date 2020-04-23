@@ -1,0 +1,70 @@
+#!/bin/bash
+
+set -eo pipefail
+
+set -x
+
+# Ensure we are using the latest pip and wheel packages.
+
+pip install -U pip setuptools wheel
+
+# Install base packages needed for running JupyterHub.
+
+pip install -r /tmp/src/requirements.txt
+
+# Install npm packages required by JupyterHub.
+
+echo " -----> Installing npm packages."
+
+npm install -g configurable-http-proxy
+
+# Copy global JupyterHub config file into place.
+
+cp /tmp/src/jupyterhub_config.py /opt/app-root/etc/
+cp /tmp/src/jupyterhub_config.sh /opt/app-root/etc/
+
+cp /tmp/src/jupyterhub_config-*.py /opt/app-root/etc/
+cp /tmp/src/jupyterhub_config-*.sh /opt/app-root/etc/
+
+# This S2I assemble script is only used when creating the custom image.
+# For when running the image, or using it as a S2I builder, we use a second
+# set of custom S2I scripts. We now need to move these into the correct
+# location and have the custom image use those by dropping in an image
+# metadata file which overrides the labels of the base image.
+
+mkdir -p /tmp/.s2i
+
+mv /tmp/src/builder/image_metadata.json /tmp/.s2i/image_metadata.json
+
+mv /tmp/src/builder /opt/app-root/builder
+
+# Also move into place helper scripts and the script to start JupyterHub.
+
+mv /tmp/src/scripts/* /opt/app-root/bin/
+
+mv /tmp/src/start-jupyterhub.sh /opt/app-root/bin/
+
+rm -rf /tmp/src
+
+# Scripts used to be kept in /opt/app-root/scripts but are now in the
+# directory /opt/app-root/bin. Create a symlink for wait-for-database
+# for now until any templates running script from old location are
+# purged.
+
+mkdir -p /opt/app-root/scripts
+
+ln -s /opt/app-root/bin/wait-for-database /opt/app-root/scripts/wait-for-database
+
+# Ensure passwd/group file intercept happens for any shell environment.
+
+echo "source /opt/app-root/etc/generate_container_user" >> /opt/app-root/etc/scl_enable
+
+# Create additional directories.
+
+echo " -----> Creating additional directories."
+
+mkdir -p /opt/app-root/data
+
+# Fixup permissions on directories and files.
+
+fix-permissions /opt/app-root
