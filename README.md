@@ -1,6 +1,6 @@
 # Jupyter on OpenShift 3.11
 
-This repository includes software and configurations as a result of my efforts to provide datascientists a highly customizable, powerfull and a secure platform on OpenShift Container Platform 3.11. Before going deeper into it, first things first, I've greatly inspired from two repos maintained by @GrahamDumpleton [JupyterHub Quickstart](https://github.com/jupyter-on-openshift/jupyterhub-quickstart) and [Jupyter Notebooks](https://github.com/jupyter-on-openshift/jupyter-notebooks), then I created my own images and many configurations. I might have moved away from some of the Graham's good-practices in return for meeting other needs of the solution and I'm still working on them.
+This repository includes software and configurations as a result of my efforts to provide datascientists a highly customizable, powerfull and a secure platform on OpenShift Container Platform 3.11. Before going deeper into it, first things first, I've greatly inspired from two repos maintained by @GrahamDumpleton, [JupyterHub Quickstart](https://github.com/jupyter-on-openshift/jupyterhub-quickstart) and [Jupyter Notebooks](https://github.com/jupyter-on-openshift/jupyter-notebooks), then I created my own images and many configurations. I might have moved away from some of the Graham's good-practices in return for meeting other needs of the solution and I'm still working on them.
 
 Secondly, I'm aware of Open Data Hub project but still manually trying to put all the pieces together is a great way to experience and learn more about the components like JupyterHub, JupyterLab, KubeSpawner, etc.
 
@@ -31,4 +31,45 @@ docker push <registry>/<user>/jupyternb:<tag>
 
 JupyterHub image is pretty straightforward, these is nothing fancy about it, it will install regular python modules related with JupyterHub. But notebook image is a little bit more customized and complicated, apart from python modules, Oracle client binaries, tensorflow and JupyterLab (with ``git`` extension) installations also take place. As a result of this, we have a pretty big image, so you are warned :)  
 
-If you are unsure of how to build these images, feel free to use the ones that exist in the template.
+If you are unsure of how to build these images, feel free to use the ones that exist in the template. 
+
+## Deploy JupyterHub environment
+
+The pre-requisities of deploying a JupyterHub environment is as follows:
+
+* A functional OpenShift 3.11 environment. If an OpenShift cluster at your disposal does not exist, you can have a look at [Minishift](https://www.okd.io/minishift/).
+* A linux machine to run your ``oc`` commands which can access to your OpenShift cluster.
+* Web server certificates named ``jupyter-ssl.crt`` and ``jupyter-ssl.key``.
+* Internet access from your linux machine.
+* A quiet place without any distractions.
+
+Start with cloning the repository, creating the namespace, importing the template and creating a new application from the template. There are more parameters in template config, so don't miss to check and adapt according to your environment.
+
+```
+git clone https://github.com/vOrcunus/jupyter-openshift.git
+oc new-project datascience --display-name="MY JUPYTER PROJECT"
+oc -n datascience apply -f ./config/template-jupyterhub.yaml
+oc -n datascience new-app --template jupyterhub --param APPLICATION_NAME=jupyter
+oc status
+```
+
+A postgresql and the jupyterhub pod should have been created. I've defined the replica count of jupyterhub as zero because we need to do some extra configs in order to prevent it getting erros. These configurations are;
+
+* Give ``anyuid`` permission to jupyter service account. This is required for running cull-idle service on JupyterHub otherwise it errors out.
+* Create configMap that includes most of our JupyterHub customizations.
+* Copy your certificate files, inject them to JupyterHub pod via secrets. 
+
+So, run:
+
+```
+oc adm policy add-scc-to-user anyuid system:serviceaccount:datascience:jupyter
+oc -n datascience apply -f ./config/configmap-jupyterhub.yaml
+oc -n datascience create secret tls jupyter-ssl --cert jupyter-ssl.crt --key jupyter-ssl.key
+oc -n datascience set volume dc/jupyter --add -t secret -m /opt/app-root/share/jupyterhub/ssl --name certs --secret-name jupyter-ssl
+```
+
+Now we are ready to spin up our JupyterHub pod.
+
+```
+oc -n datascience scale dc/jupyter --replicas=1
+```  

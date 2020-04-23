@@ -262,12 +262,15 @@ parameters:
 - name: APPLICATION_NAME
   required: true
   value: jupyter
+  description: "Name of the application"
 - name: JUPYTERHUB_IMAGE
   required: true
   value: docker.io/orcunuso/jupyterhub:20200415
+  description: "Docker image for JupyterHub"
 - name: NOTEBOOK_IMAGE
   required: true
   value: docker.io/orcunuso/jupyternb-cpu:20200415
+  description: "Default Docker image for Jupyter Notebooks"
 - name: NOTEBOOK_CPU_REQUEST
   required: true
   value: "0.5"
@@ -298,4 +301,5 @@ parameters:
 - name: K8S_TOLERATION
   required: true
   value: datascience-node
+  description: "If no taints are configured on nodes, leave it empty"
 
