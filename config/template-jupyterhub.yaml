@@ -1,0 +1,301 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  annotations:
+    description: Template for deploying a customized JupyterHub instance.
+    iconClass: icon-python
+    openshift.io/display-name: JupyterHub
+    tags: python,jupyter,jupyterhub
+  name: jupyterhub
+objects:
+- apiVersion: v1
+  data:
+    jupyterhub_config.py: ${JUPYTERHUB_CONFIG}
+  kind: ConfigMap
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-cfg
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: jupyter
+    labels:
+      app: ${APPLICATION_NAME}
+    annotations:
+      serviceaccounts.openshift.io/oauth-want-challenges: false
+- apiVersion: authorization.openshift.io/v1
+  kind: RoleBinding
+  metadata:
+    name: ${APPLICATION_NAME}-edit
+    labels:
+      app: ${APPLICATION_NAME}
+  subjects:
+    kind: ServiceAccount
+    name: jupyter
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: edit
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    replicas: 0
+    selector:
+      app: ${APPLICATION_NAME}
+      deploymentconfig: ${APPLICATION_NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          alpha.image.policy.openshift.io/resolve-names: '*'
+        labels:
+          app: ${APPLICATION_NAME}
+          deploymentconfig: ${APPLICATION_NAME}
+      spec:
+        containers:
+        - env:
+          - name: APPLICATION_NAME
+            value: ${APPLICATION_NAME}
+          - name: JUPYTERHUB_NOTEBOOK_IMAGE
+            value: ${NOTEBOOK_IMAGE}
+          - name: JUPYTERHUB_NOTEBOOK_MEM_REQUEST
+            value: ${NOTEBOOK_MEM_REQUEST}
+          - name: JUPYTERHUB_NOTEBOOK_CPU_REQUEST
+            value: ${NOTEBOOK_CPU_REQUEST}
+          - name: JUPYTERHUB_NOTEBOOK_MEM_LIMIT
+            value: ${NOTEBOOK_MEM_LIMIT}
+          - name: JUPYTERHUB_NOTEBOOK_CPU_LIMIT
+            value: ${NOTEBOOK_CPU_LIMIT}
+          - name: JUPYTERHUB_DATABASE_PASSWORD
+            value: ${DATABASE_PASSWORD}
+          - name: JUPYTERHUB_DATABASE_HOST
+            value: ${APPLICATION_NAME}-db
+          - name: JUPYTERHUB_DATABASE_NAME
+            value: postgres
+          - name: JUPYTERHUB_COOKIE_SECRET
+            value: ${COOKIE_SECRET}
+          image: ${JUPYTERHUB_IMAGE}
+          name: ${APPLICATION_NAME}
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 400m
+              memory: 500Mi
+            requests:
+              cpu: 50m
+              memory: 125Mi
+          volumeMounts:
+          - mountPath: /opt/app-root/configs
+            name: config
+        initContainers:
+        - command:
+          - wait-for-database
+          env:
+          - name: JUPYTERHUB_DATABASE_PASSWORD
+            value: ${DATABASE_PASSWORD}
+          - name: JUPYTERHUB_DATABASE_HOST
+            value: ${APPLICATION_NAME}-db
+          - name: JUPYTERHUB_DATABASE_NAME
+            value: postgres
+          image: ${JUPYTERHUB_IMAGE}
+          name: wait-for-database
+          resources:
+            limits:
+              cpu: 400m
+              memory: 500Mi
+            requests:
+              cpu: 50m
+              memory: 125Mi
+        securityContext:
+          runAsUser: 1001
+        serviceAccountName: jupyter
+        tolerations:
+        - key: ${K8S_TOLERATION}
+          operator: Exists
+          effect: NoSchedule
+        volumes:
+        - configMap:
+            defaultMode: 420
+            name: ${APPLICATION_NAME}-cfg
+          name: config
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8081-tcp
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
+    selector:
+      app: ${APPLICATION_NAME}
+      deploymentconfig: ${APPLICATION_NAME}
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    host: ""
+    port:
+      targetPort: 8080-tcp
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: ${APPLICATION_NAME}
+      weight: 100
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-db
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: ${DATABASE_DISKSIZE}
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-db
+  spec:
+    replicas: 1
+    selector:
+      app: ${APPLICATION_NAME}
+      deploymentconfig: ${APPLICATION_NAME}-db
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: ${APPLICATION_NAME}
+          deploymentconfig: ${APPLICATION_NAME}-db
+      spec:
+        containers:
+        - env:
+          - name: POSTGRESQL_USER
+            value: jupyterhub
+          - name: POSTGRESQL_PASSWORD
+            value: ${DATABASE_PASSWORD}
+          - name: POSTGRESQL_DATABASE
+            value: postgres
+          image: ${DATABASE_IMAGE}
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+          name: postgresql
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -i
+              - -c
+              - psql -h 127.0.0.1 -U $POSTGRESQL_USER -q -d $POSTGRESQL_DATABASE
+                -c 'SELECT 1'
+          resources:
+            limits:
+              cpu: 400m
+              memory: 500Mi
+            requests:
+              cpu: 50m
+              memory: 125Mi
+          volumeMounts:
+          - mountPath: /var/lib/pgsql/data
+            name: data
+        tolerations:
+        - key: ${K8S_TOLERATION}
+          operator: Exists
+          effect: NoSchedule
+        volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ${APPLICATION_NAME}-db
+        - configMap:
+            defaultMode: 420
+            name: ${APPLICATION_NAME}-cfg
+          name: config
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-db
+  spec:
+    ports:
+    - name: 5432-tcp
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      app: ${APPLICATION_NAME}
+      deploymentconfig: ${APPLICATION_NAME}-db
+parameters:
+- name: APPLICATION_NAME
+  required: true
+  value: jupyter
+- name: JUPYTERHUB_IMAGE
+  required: true
+  value: docker.io/orcunuso/jupyterhub:20200415
+- name: NOTEBOOK_IMAGE
+  required: true
+  value: docker.io/orcunuso/jupyternb-cpu:20200415
+- name: NOTEBOOK_CPU_REQUEST
+  required: true
+  value: "0.5"
+- name: NOTEBOOK_CPU_LIMIT
+  required: true
+  value: "3"
+- name: NOTEBOOK_MEM_REQUEST
+  required: true
+  value: 4Gi
+- name: NOTEBOOK_MEM_LIMIT
+  required: true
+  value: 16Gi
+- name: JUPYTERHUB_CONFIG
+- name: DATABASE_PASSWORD
+  from: '[a-zA-Z0-9]{16}'
+  generate: expression
+  required: true
+- name: COOKIE_SECRET
+  from: '[a-f0-9]{32}'
+  generate: expression
+  required: true
+- name: DATABASE_DISKSIZE
+  required: true
+  value: 5Gi
+- name: DATABASE_IMAGE
+  required: true
+  value: registry.redhat.io/rhscl/postgresql-96-rhel7:1-53
+- name: K8S_TOLERATION
+  required: true
+  value: datascience-node
+

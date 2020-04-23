@@ -1,0 +1,13 @@
+# General Purpose
+*.crt
+*.key
+*.log
+*.rpm
+*.sh.source
+
+# Terraform Files
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfout
+**/.terraform/*

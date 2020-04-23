@@ -1,0 +1,141 @@
+apiVersion: v1
+data:
+  jupyterhub_config.py: |-
+
+    def check_profile_hook(spawner):
+      tcuser_name = spawner.user.name
+      tcuser_options = spawner.user_options
+      tcuser_profile = tcuser_options.get('profile')
+      tcuser_query = '%s:%s' % (tcuser_name, tcuser_profile)
+      spawner.log.info('TCLOG -> ======= Profile Mapping: %s ========', tcuser_query)
+      spawner.environment['JUPYTERNB_TCUSER'] = tcuser_name
+      #TODO: Env injection did not work! Investigation needed.
+
+      if tcuser_profile == "notebook-cpu-type0":
+        spawner.log.info('TCLOG -> User is already permitted to use the general profile')
+      else:
+        spawner.log.info('TCLOG -> User needs to be approved to use this image. Checking...')
+        profile_mapping_file = '/opt/app-root/configs/tcuser_profile_mappings'
+        if os.path.exists(profile_mapping_file):
+          file_handler = open(profile_mapping_file, 'r')
+          file_lines = file_handler.readlines()
+          file_handler.close()
+
+          permission_found = False
+          for line in file_lines:
+            if line.strip() == tcuser_query:
+              permission_found = True
+              break
+          if permission_found:
+            spawner.log.info('TCLOG -> User is approved to use this profile')
+          else:
+            spawner.log.error('TCLOG -> User is not approved to use this profile. Please define %s', tcuser_query)
+            raise Exception('You are not permitted to use this profile. Please contact your system administrator')
+        else:
+          spawner.log.error('TCLOG -> Profile mapping file could not be found. Please be sure /opt/app-root/configs/tcuser_profile_mappings exists.')
+          raise Exception('Profile mapping file not found. Please contact your system administrator')
+
+    # General Configurations
+    c.JupyterHub.ssl_key = '/opt/app-root/share/jupyterhub/ssl/tls.key'
+    c.JupyterHub.ssl_cert = '/opt/app-root/share/jupyterhub/ssl/tls.crt'
+    c.JupyterHub.cleanup_servers = False
+    c.JupyterHub.admin_access = False
+    c.JupyterHub.log_level = 'INFO'
+    c.Spawner.notebook_dir = '/opt/app-root/src/PV'
+    c.JupyterHub.services = [{'name': 'cull-idle', 'admin': True, 'command': 'python3 /opt/app-root/bin/cull-idle-servers.py --timeout=28800'.split()}]
+    # https://jupyter-notebook.readthedocs.io/en/stable/config.html?highlight=cull
+
+    # Kubernetes Spawner Configurations
+    # https://jupyterhub-kubespawner.readthedocs.io/en/latest/spawner.html#module-kubespawner.spawner
+    c.KubeSpawner.pod_name_template = '%s-nb-{username}' % application_name
+    c.KubeSpawner.image_pull_policy = 'IfNotPresent'
+    c.KubeSpawner.pvc_name_template = '%s-pvc-{username}' % application_name
+    c.KubeSpawner.storage_class = 'my-storage-class'
+    c.KubeSpawner.storage_pvc_ensure = True
+    c.KubeSpawner.storage_access_modes = ['ReadWriteOnce']
+    c.KubeSpawner.storage_capacity = '20Gi'
+    c.KubeSpawner.volumes = [{'name': '%s-volume-{username}' % application_name, 'persistentVolumeClaim': {'claimName': '%s-pvc-{username}' % application_name}}]
+    c.KubeSpawner.volume_mounts = [{'mountPath': '/opt/app-root/src/PV', 'name': '%s-volume-{username}' % application_name}]
+    c.KubeSpawner.node_selector = {'project-node-selector': 'datascience'}
+    c.KubeSpawner.tolerations = [{'key': 'datascience-node', 'operator': 'Exists', 'effect': 'NoSchedule'}]
+    c.KubeSpawner.cpu_guarantee = float(os.environ['JUPYTERHUB_NOTEBOOK_CPU_REQUEST'])
+    c.KubeSpawner.mem_guarantee = convert_size_to_bytes(os.environ['JUPYTERHUB_NOTEBOOK_MEM_REQUEST'])
+    c.KubeSpawner.cpu_limit = float(os.environ['JUPYTERHUB_NOTEBOOK_CPU_LIMIT'])
+    c.KubeSpawner.mem_limit = convert_size_to_bytes(os.environ['JUPYTERHUB_NOTEBOOK_MEM_LIMIT'])
+    c.KubeSpawner.start_timeout = 120
+    c.KubeSpawner.pre_spawn_hook = check_profile_hook
+    c.KubeSpawner.lifecycle_hooks = {
+        "postStart": {"exec": {"command": ["/bin/sh", "-c", "mkdir -p /opt/app-root/src/PV/site-packages"]}}}
+
+    # Jupyter Profiles Configuration
+    c.KubeSpawner.profile_list = [{
+        'display_name': 'notebook-cpu-type0', 'default': True,
+        'description': 'Jupyter Notebook (CPU powered) - Type 0',
+        'kubespawner_override': {
+            'image': 'docker.io/orcunuso/jupyternb-cpu:20200415',
+            'mem_guarantee': '6G', 'mem_limit': '24G',
+            'environment': { 'JUPYTER_ENABLE_LAB': 'true', 'PYTHONPATH': '/opt/app-root/src/PV/site-packages' }
+        }
+      },{
+        'display_name': 'notebook-cpu-type1',
+        'description': 'Jupyter Notebook (CPU powered) - Type 1',
+        'kubespawner_override': {
+            'image': 'docker.io/orcunuso/jupyternb-cpu:20200415',
+            'mem_guarantee': '8G', 'mem_limit': '32G',
+            'environment': { 'JUPYTER_ENABLE_LAB': 'true', 'PYTHONPATH': '/opt/app-root/src/PV/site-packages', 'JUPYTERNB_KERNEL_TIMEOUT': '21600' }
+        }
+      },{
+        'display_name': 'notebook-cpu-type2',
+        'description': 'Jupyter Notebook (CPU powered) - Type 2',
+        'kubespawner_override': {
+            'image': 'docker.io/orcunuso/jupyternb-cpu:20200415',
+            'mem_guarantee': '16G', 'mem_limit': '64G',
+            'environment': { 'JUPYTER_ENABLE_LAB': 'true', 'PYTHONPATH': '/opt/app-root/src/PV/site-packages', 'JUPYTERNB_KERNEL_TIMEOUT': '14400' }
+        }
+      },{
+        'display_name': 'notebook-cpu-type3',
+        'description': 'Jupyter Notebook (CPU powered) - Type 3',
+        'kubespawner_override': {
+            'image': 'docker.io/orcunuso/jupyternb-cpu:20200415',
+            'mem_guarantee': '16G', 'mem_limit': '128G',
+            'environment': { 'JUPYTER_ENABLE_LAB': 'true', 'PYTHONPATH': '/opt/app-root/src/PV/site-packages', 'JUPYTERNB_KERNEL_TIMEOUT': '7200' }
+        }
+      }
+    ]
+
+    # LDAP Identity Provider
+    # https://pypi.org/project/jupyterhub-ldap-authenticator/
+    # https://github.com/jupyterhub/ldapauthenticator
+    c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
+    c.LDAPAuthenticator.server_address = 'dc.orcunus.io'
+    c.LDAPAuthenticator.server_port = 389
+    c.LDAPAuthenticator.use_ssl = False
+    c.LDAPAuthenticator.user_search_base = 'OU=Users,DC=orcunuso,DC=io'
+    c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
+    c.LDAPAuthenticator.use_lookup_dn_username = False
+    c.LDAPAuthenticator.allowed_groups = ['CN=DataScientists,OU=Groups,DC=orcunuso,DC=io']
+    c.LDAPAuthenticator.lookup_dn = True
+    c.LDAPAuthenticator.lookup_dn_search_filter = '({login_attr}={login})'
+    c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'CN'
+    c.LDAPAuthenticator.lookup_dn_search_user = 'CN=svcpg,OU=Generic Users,DC=orcunuso,DC=io'
+    c.LDAPAuthenticator.lookup_dn_search_password = 'password'
+    #TODO: Plaintext password here is unadvised, so inject the password via secrets.
+    c.LDAPAuthenticator.escape_userdn = False
+    c.LDAPAuthenticator.valid_username_regex = r'^[a-z0-9A-Z]*$'
+    c.Authenticator.admin_users = ['user1']
+  tcuser_profile_mappings: |-
+    # This file includes user profile mappings.
+    # User will not be permitted to run requested notebook if mapping does not exist here.
+    # "notebook-cpu-type0" profile is pre-granted so a specific mapping is not required.
+    user1:notebook-cpu-type1
+    user1:notebook-cpu-type2
+    user2:notebook-cpu-type2
+    user3:notebook-cpu-type2
+    user3:notebook-cpu-type3
+kind: ConfigMap
+metadata:
+  labels:
+    app: datascience
+  name: datascience-cfg
+  namespace: datascience
+
