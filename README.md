@@ -29,6 +29,6 @@ docker build -t <registry>/<user>/jupyternb:<tag> .
 docker push <registry>/<user>/jupyternb:<tag>
 ```
 
-JupyterHub image is pretty straightforward, these is nothing fancy about it, it will install regular python modules related with JupyterHub. But notebook image is a little bit more customized and complicated, apart from python modules, Oracle client binaries, tensorflow and JupyterLab (with git extension) installations also take place. As a result of this, we have a pretty big image, so you are warned :)  
+JupyterHub image is pretty straightforward, these is nothing fancy about it, it will install regular python modules related with JupyterHub. But notebook image is a little bit more customized and complicated, apart from python modules, Oracle client binaries, tensorflow and JupyterLab (with ``git`` extension) installations also take place. As a result of this, we have a pretty big image, so you are warned :)  
 
 If you are unsure of how to build these images, feel free to use the ones that exist in the template.
