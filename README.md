@@ -122,3 +122,22 @@ The company might have different user profiles with different cpu and memory res
 * That callable is defined as ``KubeSpawner.pre_spawn_hook``
 
 If the user is not defined in that mapping list, he/she will not be able to run the server and receive an exception on the user interface. This incident will also be logged in the stdout of jupyterhub pod.
+
+Please note that, the options form will override any image defined by the ``NOTEBOOK_IMAGE``template parameter.
+
+### Persistent Storage for Users
+
+When a notebook instance is created and a user creates their own notebooks or install custom python modules, if the instance is stopped they will lose any work they have done. To prevent users from losing their data and modules, you can configure jupyterhub to request persistent volume and mount it into the notebook pods. 
+
+```
+c.Spawner.notebook_dir = '/opt/app-root/src/PV'
+c.KubeSpawner.pvc_name_template = '%s-pvc-{username}' % application_name
+c.KubeSpawner.storage_class = 'my-storage-class'
+c.KubeSpawner.storage_pvc_ensure = True
+c.KubeSpawner.storage_access_modes = ['ReadWriteOnce']
+c.KubeSpawner.storage_capacity = '20Gi'
+c.KubeSpawner.volumes = [{'name': '%s-volume-{username}' % application_name, 'persistentVolumeClaim': {'claimName': '%s-pvc-{username}' % application_name}}]
+c.KubeSpawner.volume_mounts = [{'mountPath': '/opt/app-root/src/PV', 'name': '%s-volume-{username}' % application_name}]
+```
+
+Apart from that configuration, you can also alter ``PYTHONPATH`` environment variable to include ``/opt/app-root/src/PV/site-packages``, inform your users to install new modules into this directory and therefore they will still be capable of using these modules without the need to reinstall even after pod restarts.
