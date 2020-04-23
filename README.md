@@ -13,6 +13,12 @@ The notebook extends the console-based approach to interactive computing in a qu
 
 [JupyterHub](https://github.com/jupyterhub/jupyterhub) is the best way to serve [Jupyter Notebook](https://jupyter-notebook.readthedocs.io/en/latest/notebook.html) for multiple users. It can be used in a classes of students, a corporate data science group or scientific research group. It is a multi-user Hub that spawns, manages, and proxies multiple instances of the single-user Jupyter notebook server.
 
+## Architecture
+
+The components used in this project other than Kubernetes / OpenShift are JupyterHub v1.1.0, JupyterLab v1.2.7, KubeSpawner and LDAP Authenticator.
+
+![architecture](https://raw.githubusercontent.com/vOrcunus/jupyter-openshift/master/png/architecture.png)
+
 ## Prepare JupyterHub and Notebook Images
 
 The first step in deploying JupyterHub is to prepare a notebook image and the image for JupyterHub. The contents of the images and Dockerfiles exists in ``images`` folder. What we need to do is to build them and push to a private registry or Docker Hub. These images are CentOS based and usually I prefer to use specific tags so please check for the most recent tags of related base images from [Docker Hub](https://hub.docker.com/).
