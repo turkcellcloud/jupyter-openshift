@@ -80,6 +80,9 @@ objects:
             value: postgres
           - name: JUPYTERHUB_COOKIE_SECRET
             value: ${COOKIE_SECRET}
+          envFrom:
+          - secretRef:
+              name: ad-password
           image: ${JUPYTERHUB_IMAGE}
           name: ${APPLICATION_NAME}
           ports:

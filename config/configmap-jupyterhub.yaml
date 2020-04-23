@@ -118,8 +118,7 @@ data:
     c.LDAPAuthenticator.lookup_dn_search_filter = '({login_attr}={login})'
     c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'CN'
     c.LDAPAuthenticator.lookup_dn_search_user = 'CN=svcpg,OU=Generic Users,DC=orcunuso,DC=io'
-    c.LDAPAuthenticator.lookup_dn_search_password = 'password'
-    #TODO: Plaintext password here is unadvised, so inject the password via secrets.
+    c.LDAPAuthenticator.lookup_dn_search_password = os.environ['AD_PASSWORD']
     c.LDAPAuthenticator.escape_userdn = False
     c.LDAPAuthenticator.valid_username_regex = r'^[a-z0-9A-Z]*$'
     c.Authenticator.admin_users = ['user1']
@@ -132,6 +131,7 @@ data:
     user2:notebook-cpu-type2
     user3:notebook-cpu-type2
     user3:notebook-cpu-type3
+    user4:notebook-gpu-type0
 kind: ConfigMap
 metadata:
   labels:

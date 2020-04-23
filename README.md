@@ -61,11 +61,13 @@ A postgresql and a jupyterhub pod should have been created. I've defined the rep
 
 * Give ``anyuid`` permission to jupyter service account. This is required for running cull-idle service on jupyterhub otherwise it errors out.
 * Create configMap that includes most of our jupyterhub customizations.
+* Create a secret that keeps the password of the user to query AD.
 * Copy your certificate files, inject them to jupyterhub pod via secrets. 
 
 ```
 oc adm policy add-scc-to-user anyuid system:serviceaccount:datascience:jupyter
 oc -n datascience apply -f ./config/configmap-jupyterhub.yaml
+oc -n datascience create secret generic ad-password --from-literal AD_PASSWORD=super-hidden-password
 oc -n datascience create secret tls jupyter-ssl --cert jupyter-ssl.crt --key jupyter-ssl.key
 oc -n datascience set volume dc/jupyter --add -t secret -m /opt/app-root/share/jupyterhub/ssl --name certs --secret-name jupyter-ssl
 ```
