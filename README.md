@@ -141,3 +141,24 @@ c.KubeSpawner.volume_mounts = [{'mountPath': '/opt/app-root/src/PV', 'name': '%s
 ```
 
 Apart from that configuration, you can also alter ``PYTHONPATH`` environment variable to include ``/opt/app-root/src/PV/site-packages``, inform your users to install new modules into this directory and therefore they will still be capable of using these modules without the need to reinstall even after pod restarts.
+
+### Culling Idle Servers and Kernels
+
+When a notebook server is created, it will keep running forever and consume valuable resources in your cluster. As the time goes by, more users will probably use this platform and more idle resources will consume memory. This problem is addressed by community and a jupyterhub service can be called periodically to cull idle servers. This service configuration takes place under ``JupyterHub.services``parameter. This will stop notebooks that don't have any activity for 12 hours.
+
+```
+c.JupyterHub.services = [{'name': 'cull-idle', 'admin': True, 'command': 'python3 /opt/app-root/bin/cull-idle-servers.py --timeout=43200'.split()}]
+```
+
+In my configuration, I've added profiles for advanced datascientists that allocates great amounts of memory hence I would like to define more restrictive configurations and reclaim those valuable resources sooner than 12 hours. The problem is, jupyterhub service that culls servers will not help because it's a global configuration, it will effect all profiles. The answer is defining kernel shutdown with different timeout configurations within the notebooks.
+
+```
+tcKernelTimeout = int(os.environ.get('JUPYTERNB_KERNEL_TIMEOUT', '0'))
+c.NotebookApp.shutdown_no_activity_timeout = 3601
+c.MappingKernelManager.cull_idle_timeout = tcKernelTimeout
+c.MappingKernelManager.cull_busy = False
+c.MappingKernelManager.cull_connected = True
+c.MappingKernelManager.cull_interval = 301
+``` 
+
+This configuration takes place in ``jupyter_notebook_config.py``. For more information, refer to the [jupyter notebook](https://jupyter-notebook.readthedocs.io/en/latest/config.html#options) documentation.
