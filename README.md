@@ -53,13 +53,11 @@ oc -n datascience new-app --template jupyterhub --param APPLICATION_NAME=jupyter
 oc status
 ```
 
-A postgresql and the jupyterhub pod should have been created. I've defined the replica count of jupyterhub as zero because we need to do some extra configs in order to prevent it getting erros. These configurations are;
+A postgresql and the jupyterhub pod should have been created. I've defined the replica count of jupyterhub as zero because we need to do some extra configs in order to prevent it from getting erros. These configurations are;
 
-* Give ``anyuid`` permission to jupyter service account. This is required for running cull-idle service on JupyterHub otherwise it errors out.
-* Create configMap that includes most of our JupyterHub customizations.
-* Copy your certificate files, inject them to JupyterHub pod via secrets. 
-
-So, run:
+* Give ``anyuid`` permission to jupyter service account. This is required for running cull-idle service on jupyterhub otherwise it errors out.
+* Create configMap that includes most of our jupyterhub customizations.
+* Copy your certificate files, inject them to jupyterhub pod via secrets. 
 
 ```
 oc adm policy add-scc-to-user anyuid system:serviceaccount:datascience:jupyter
@@ -68,7 +66,7 @@ oc -n datascience create secret tls jupyter-ssl --cert jupyter-ssl.crt --key jup
 oc -n datascience set volume dc/jupyter --add -t secret -m /opt/app-root/share/jupyterhub/ssl --name certs --secret-name jupyter-ssl
 ```
 
-Now we are ready to spin up our JupyterHub pod.
+Now we are ready to spin up our jupyterhub pod.
 
 ```
 oc -n datascience scale dc/jupyter --replicas=1
