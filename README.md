@@ -51,7 +51,7 @@ Start with cloning the repository, creating the namespace, importing the templat
 git clone https://github.com/vOrcunus/jupyter-openshift.git
 oc new-project datascience --display-name="MY JUPYTER PROJECT"
 oc -n datascience apply -f ./config/template-jupyterhub.yaml
-oc -n datascience new-app --template jupyterhub --param APPLICATION_NAME=jupyter
+oc -n datascience new-app --template jupyterhub --param APPLICATION\_NAME=jupyter
 oc status
 ```
 
@@ -65,7 +65,7 @@ A postgresql and a jupyterhub pod should have been created. I've defined the rep
 ```
 oc adm policy add-scc-to-user anyuid system:serviceaccount:datascience:jupyter
 oc -n datascience apply -f ./config/configmap-jupyterhub.yaml
-oc -n datascience create secret generic ad-password --from-literal AD_PASSWORD=super-hidden-password
+oc -n datascience create secret generic ad-password --from-literal AD\_PASSWORD=super-hidden-password
 oc -n datascience create secret tls jupyter-ssl --cert jupyter-ssl.crt --key jupyter-ssl.key
 oc -n datascience set volume dc/jupyter --add -t secret -m /opt/app-root/share/jupyterhub/ssl --name certs --secret-name jupyter-ssl
 ```
@@ -99,21 +99,21 @@ There are more configuration details in the configmap that need to be mentioned.
 For authentication purposes, I used Active Directory service and configured official [ldapauthenticator](https://github.com/jupyterhub/ldapauthenticator) according to my environment. This configuration also enables us to authorize users in accordance with their membership information in AD.
 
 ```
- c.LDAPAuthenticator_class = 'ldapauthenticator.LDAPAuthenticator'
- c.LDAPAuthenticator.server_address = 'dc.orcunus.io'
- c.LDAPAuthenticator.server_port = 389
- c.LDAPAuthenticator.use_ssl = False
- c.LDAPAuthenticator.user_search_base = 'OU=Users,DC=orcunuso,DC=io'
- c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
- c.LDAPAuthenticator.use_lookup_dn_username = False
- c.LDAPAuthenticator.allowed_groups = ['CN=DataScientists,OU=Groups,DC=orcunuso,DC=io']
- c.LDAPAuthenticator.lookup_dn = True
- c.LDAPAuthenticator.lookup_dn_search_filter = '({login_attr}={login})'
- c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'CN'
- c.LDAPAuthenticator.lookup_dn_search_user = 'CN=svcpg,OU=Generic Users,DC=orcunuso,DC=io'
- c.LDAPAuthenticator.lookup_dn_search_password = os.environ['AD_PASSWORD']
- c.LDAPAuthenticator.escape_userdn = False
- c.LDAPAuthenticator.valid_username_regex = r'^[a-z0-9A-Z]*$'
+ c.LDAPAuthenticator\_class = 'ldapauthenticator.LDAPAuthenticator'
+ c.LDAPAuthenticator.server\_address = 'dc.orcunus.io'
+ c.LDAPAuthenticator.server\_port = 389
+ c.LDAPAuthenticator.use\_ssl = False
+ c.LDAPAuthenticator.user\_search\_base = 'OU=Users,DC=orcunuso,DC=io'
+ c.LDAPAuthenticator.user\_attribute = 'sAMAccountName'
+ c.LDAPAuthenticator.use\_lookup\_dn\_username = False
+ c.LDAPAuthenticator.allowed\_groups = ['CN=DataScientists,OU=Groups,DC=orcunuso,DC=io']
+ c.LDAPAuthenticator.lookup\_dn = True
+ c.LDAPAuthenticator.lookup\_dn\_search\_filter = '({login\_attr}={login})'
+ c.LDAPAuthenticator.lookup\_dn\_user\_dn\_attribute = 'CN'
+ c.LDAPAuthenticator.lookup\_dn\_search\_user = 'CN=svcpg,OU=Generic Users,DC=orcunuso,DC=io'
+ c.LDAPAuthenticator.lookup\_dn\_search\_password = os.environ['AD\_PASSWORD']
+ c.LDAPAuthenticator.escape\_userdn = False
+ c.LDAPAuthenticator.valid\_username\_regex = r'^[a-z0-9A-Z]\*$'
 ```
 
 ### Profile Management
@@ -133,14 +133,14 @@ Please note that, the options form will override any image defined by the ``NOTE
 When a notebook instance is created and a user creates their own notebooks or install custom python modules, if the instance is stopped they will lose any work they have done. To prevent users from losing their data and modules, you can configure jupyterhub to request persistent volume and mount it into the notebook pods. 
 
 ```
-c.Spawner.notebook_dir = '/opt/app-root/src/PV'
-c.KubeSpawner.pvc_name_template = '%s-pvc-{username}' % application_name
-c.KubeSpawner.storage_class = 'my-storage-class'
-c.KubeSpawner.storage_pvc_ensure = True
-c.KubeSpawner.storage_access_modes = ['ReadWriteOnce']
-c.KubeSpawner.storage_capacity = '20Gi'
-c.KubeSpawner.volumes = [{'name': '%s-volume-{username}' % application_name, 'persistentVolumeClaim': {'claimName': '%s-pvc-{username}' % application_name}}]
-c.KubeSpawner.volume_mounts = [{'mountPath': '/opt/app-root/src/PV', 'name': '%s-volume-{username}' % application_name}]
+c.Spawner.notebook\_dir = '/opt/app-root/src/PV'
+c.KubeSpawner.pvc\_name\_template = '%s-pvc-{username}' % application\_name
+c.KubeSpawner.storage\_class = 'my-storage-class'
+c.KubeSpawner.storage\_pvc\_ensure = True
+c.KubeSpawner.storage\_access\_modes = ['ReadWriteOnce']
+c.KubeSpawner.storage\_capacity = '20Gi'
+c.KubeSpawner.volumes = [{'name': '%s-volume-{username}' % application\_name, 'persistentVolumeClaim': {'claimName': '%s-pvc-{username}' % application\_name}}]
+c.KubeSpawner.volume\_mounts = [{'mountPath': '/opt/app-root/src/PV', 'name': '%s-volume-{username}' % application\_name}]
 ```
 
 Apart from that configuration, you can also alter ``PYTHONPATH`` environment variable to include ``/opt/app-root/src/PV/site-packages``, inform your users to install new modules into this directory and therefore they will still be capable of using these modules without the need to reinstall even after pod restarts.
@@ -156,12 +156,12 @@ c.JupyterHub.services = [{'name': 'cull-idle', 'admin': True, 'command': 'python
 In my configuration, I've added profiles for advanced datascientists that allocates great amounts of memory hence I would like to define more restrictive timeouts and reclaim those valuable resources sooner than 12 hours. The problem is, jupyterhub service that culls servers will not help because it's a global configuration, it will effect all profiles. The answer is defining kernel shutdown with different timeout configurations within the notebooks.
 
 ```
-tcKernelTimeout = int(os.environ.get('JUPYTERNB_KERNEL_TIMEOUT', '0'))
-c.NotebookApp.shutdown_no_activity_timeout = 3601
-c.MappingKernelManager.cull_idle_timeout = tcKernelTimeout
-c.MappingKernelManager.cull_busy = False
-c.MappingKernelManager.cull_connected = True
-c.MappingKernelManager.cull_interval = 301
+tcKernelTimeout = int(os.environ.get('JUPYTERNB\_KERNEL\_TIMEOUT', '0'))
+c.NotebookApp.shutdown\_no\_activity\_timeout = 3601
+c.MappingKernelManager.cull\_idle\_timeout = tcKernelTimeout
+c.MappingKernelManager.cull\_busy = False
+c.MappingKernelManager.cull\_connected = True
+c.MappingKernelManager.cull\_interval = 301
 ``` 
 
 This configuration takes place in ``jupyter_notebook_config.py``. For more information, refer to the [jupyter notebook](https://jupyter-notebook.readthedocs.io/en/latest/config.html#options) documentation.
