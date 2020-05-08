@@ -7,8 +7,8 @@ set -eo pipefail
 
 echo '############## Installing JupyterLab-Git ##############'
 
-jupyter labextension install @jupyterlab/git
-pip install --upgrade jupyterlab-git
+jupyter labextension install @jupyterlab/git@0.10.0
+pip install --upgrade jupyterlab-git==0.10.0
 jupyter serverextension enable --py jupyterlab_git --sys-prefix
 jupyter lab build
 
