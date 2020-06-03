@@ -145,6 +145,14 @@ c.KubeSpawner.volume_mounts = [{'mountPath': '/opt/app-root/src/PV', 'name': '%s
 
 Apart from that configuration, you can also alter ``PYTHONPATH`` environment variable to include ``/opt/app-root/src/PV/site-packages``, inform your users to install new modules into this directory and therefore they will still be capable of using these modules without the need to reinstall even after pod restarts.
 
+### Prevent Pod-to-Pod Communication
+
+In order to prevent pod2pod communication, you can configure a network policy that denies every ingress traffic to the notebook pods and only accepts from JupyterHub pod.
+
+```
+oc -n datascience create -f ./config/netpol-datascience.yaml
+```
+
 ### Culling Idle Servers and Kernels
 
 When a notebook server is created, it will keep running forever and consume valuable resources in your cluster. As the time goes by, more users will probably use this platform and more idle resources will consume memory. This problem is addressed by community and a jupyterhub service can be called periodically to cull idle servers. This service configuration takes place under ``JupyterHub.services`` parameter. This will stop notebooks which don't have any user or kernel activity for 12 hours.
