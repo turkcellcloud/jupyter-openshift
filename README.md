@@ -1,6 +1,6 @@
 # Jupyter on OpenShift 3.11
 
-This repository includes software and configurations as a result of my efforts to provide datascientists a highly customizable, powerful and a secure platform on OpenShift Container Platform 3.11. Before going deeper into it, first things first, I've greatly inspired (and forked eventually) from two repos maintained by @GrahamDumpleton, [JupyterHub Quickstart](https://github.com/jupyter-on-openshift/jupyterhub-quickstart) and [Jupyter Notebooks](https://github.com/jupyter-on-openshift/jupyter-notebooks), then I created my own images and customizations.
+This repository includes software and configurations as a result of our efforts to provide datascientists a highly customizable, powerful and a secure platform on OpenShift Container Platform 3.11. Before going deeper into it, first things first, we've greatly inspired from two repos maintained by @GrahamDumpleton, [JupyterHub Quickstart](https://github.com/jupyter-on-openshift/jupyterhub-quickstart) and [Jupyter Notebooks](https://github.com/jupyter-on-openshift/jupyter-notebooks), then we created our own images and customizations.
 
 ## What is Jupyter Notebook and JupyterHub
 
@@ -19,7 +19,7 @@ The components used in this project other than Kubernetes / OpenShift are Jupyte
 
 ## Prepare JupyterHub and Notebook Images
 
-The first step in deploying JupyterHub is to prepare a notebook image and the image for JupyterHub. The contents of the images and Dockerfiles exist in ``images`` folder. What we need to do is to build them and push to a private registry or Docker Hub. These images are CentOS based and I prefer to use specific tags so please check for the most recent tags of related base images from [Docker Hub](https://hub.docker.com/).
+The first step in deploying JupyterHub is to prepare a notebook image and the image for JupyterHub. The contents of the images and Dockerfiles exist in ``images`` folder. What we need to do is to build them and push to a private registry or Docker Hub. These images are CentOS based and we prefer to use specific tags so please check for the most recent tags of related base images from [Docker Hub](https://hub.docker.com/).
 
 ```
 cd ./images/jupyterhub
