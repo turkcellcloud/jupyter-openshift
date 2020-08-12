@@ -3,6 +3,7 @@
 *.key
 *.log
 *.rpm
+*.tgz
 *.sh.source
 
 # Terraform Files

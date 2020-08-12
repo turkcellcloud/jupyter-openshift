@@ -1,0 +1,48 @@
+FROM docker.io/orcunuso/jupyternb-cpu:20200415
+USER root
+
+RUN yum clean all && yum repolist && \
+    NVIDIA_GPGKEY_SUM=d1be581509378368edeec8c1eb2958702feedf3bc3d17011adbf24efacce4ab5 && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/7fa2af80.pub | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
+    echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
+COPY cuda.repo /etc/yum.repos.d/cuda.repo
+
+ENV CUDA_VERSION=10.2.89 \
+    CUDA_PKG_VERSION=10-1-10.2.89-1 \
+    CUDNN_VERSION=
+LABEL com.nvidia.cudnn.version="${CUDNN_VERSION}"
+
+RUN yum install -y \
+        cuda-cudart-$CUDA_PKG_VERSION \
+        cuda-libraries-$CUDA_PKG_VERSION \
+        cuda-nvtx-$CUDA_PKG_VERSION \
+        cuda-compat-10-1 && \
+    ln -s cuda-10.1 /usr/local/cuda && \
+    rm -rf /var/cache/yum/*
+
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/cuda/lib64" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/cuda/extras/CUPTI/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+
+ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH} \
+    LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64 \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility \
+    NVIDIA_REQUIRE_CUDA="cuda>=10.0 brand=tesla,driver>=384,driver<385 brand=tesla,driver>=410,driver<411"
+
+COPY . /tmp/src
+RUN tar --no-same-owner -xzf /tmp/src/cudnn-10.1-linux-x64-v7.6.5.32.tgz -C /usr/local --wildcards 'cuda/lib64/libcudnn.so.*' && \
+    rm /tmp/src/cudnn-10.1-linux-x64-v7.6.5.32.tgz && \
+    ldconfig
+
+#### S2I build ####
+#RUN rm -rf /tmp/src/.git* && \
+#    chown -R 1001 /tmp/src && \
+#    chgrp -R 0 /tmp/src && \
+#    chmod -R g+w /tmp/src
+
+USER 1001
+#RUN /opt/app-root/builder/assemble
+
+# https://developer.nvidia.com/rdp/cudnn-archive

@@ -1,0 +1,19 @@
+FROM temp/jupyternb-gpu-runtime:20200811
+
+ENV CUDNN_VERSION 7.6.5.32
+LABEL com.nvidia.cudnn.version="${CUDNN_VERSION}"
+COPY . /tmp/src
+RUN tar --no-same-owner -xzf /tmp/src/cudnn-10.1-linux-x64-v7.6.5.32.tgz -C /usr/local --wildcards 'cuda/lib64/libcudnn.so.*' && \
+    rm /tmp/src/cudnn-10.1-linux-x64-v7.6.5.32.tgz && \
+    ldconfig
+
+#### S2I build ####
+RUN rm -rf /tmp/src/.git* && \
+    chown -R 1001 /tmp/src && \
+    chgrp -R 0 /tmp/src && \
+    chmod -R g+w /tmp/src
+
+USER 1001
+RUN /opt/app-root/builder/assemble
+
+# https://developer.nvidia.com/rdp/cudnn-archive

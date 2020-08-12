@@ -1,0 +1,6 @@
+FROM temp/jupyternb-gpu-base:20200811
+
+RUN yum install -y \
+        cuda-libraries-$CUDA_PKG_VERSION \
+        cuda-nvtx-$CUDA_PKG_VERSION && \
+    rm -rf /var/cache/yum/*

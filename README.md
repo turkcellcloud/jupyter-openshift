@@ -26,9 +26,9 @@ cd ./images/jupyterhub
 docker build -t <registry>/<user>/jupyterhub:<tag> .
 docker push <registry>/<user>/jupyterhub:<tag>
 
-cd ../jupyternb
-docker build -t <registry>/<user>/jupyternb:<tag> .
-docker push <registry>/<user>/jupyternb:<tag>
+cd ../jupyternb-cpu
+docker build -t <registry>/<user>/jupyternb-cpu:<tag> .
+docker push <registry>/<user>/jupyternb-cpu:<tag>
 ```
 
 JupyterHub image is pretty straightforward, these is nothing fancy about it, it will install regular python modules related with JupyterHub. But notebook image is a little bit more customized and complicated. Apart from python modules; Oracle client binaries, tensorflow and JupyterLab (with ``git`` extension) are also installed. As a result of this, we have a pretty big image, so you are warned :)  
