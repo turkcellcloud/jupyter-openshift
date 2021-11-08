@@ -1,5 +1,5 @@
 notebook==6.0.3
-jupyterhub==1.1.0
+jupyterhub==1.5.0
 jupyterlab==1.2.7
 jupyter_kernel_gateway==2.4.0
 dask==2.10.0
